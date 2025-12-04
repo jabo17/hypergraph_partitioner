@@ -47,30 +47,43 @@ def get_all_benchmark_instances_in_directory(input_format, instance_dir):
 
 def get_all_benchmark_instances(partitioner, config):
   input_format_list = partitioner_mapping[partitioner].format
+  result = {}
   for format_type in input_format_list:
+    if format_type == "graph":
+        format_type = "metis"
     input_format = format_type + "_instance_folder"
     if input_format in config:
       assert "instances" not in config
       instance_dir = config[input_format]
-      return {instance: None for instance in get_all_benchmark_instances_in_directory(format_type, instance_dir)}
+      result.update({instance: None for instance in get_all_benchmark_instances_in_directory(format_type, instance_dir)})
 
     elif "instances" in config:
       # more general case where multiple directories and tags can be defined
-      result = {}
       dir_list = [(entry["path"], entry["type"], entry.get("tag")) for entry in config["instances"]]
       for (instance_dir, curr_format, instance_tag) in dir_list:
-        assert curr_format in ["hmetis", "patoh", "zoltan", "graph", "metis", "scotch"], f"invalid instance type: {curr_format}"
+        if curr_format == "graph":
+            curr_format = "metis"
+        assert curr_format in ["hmetis", "patoh", "zoltan", "metis", "scotch"], f"invalid instance type: {curr_format}"
         if curr_format == format_type:
           input_format = format_type + "_instance_folder"
           tmp = {instance: instance_tag for instance in get_all_benchmark_instances_in_directory(format_type, instance_dir)}
           intersection = {ntpath.basename(p) for p in result} & {ntpath.basename(p) for p in tmp}
           assert len(intersection) == 0, f"instance appears in multiple folders: {intersection}"
           result.update({instance: instance_tag for instance in tmp})
-      if len(result) > 0:
-        assert all(tag is not None for tag in result.values()) or all(tag is None for tag in result.values()), "Inconsistent instance tags!"
-        return result
 
-  assert False, f"No instances found for: {partitioner}"
+  assert len(result) > 0, f"No instances found for: {partitioner}"
+  assert all(tag is not None for tag in result.values()) or all(tag is None for tag in result.values()), "Inconsistent instance tags!"
+  result = [(graph, tag, k) for k in config["k"] for graph, tag in result.items()]
+
+  if "instance_restriction" in config:
+    instance_set = set()
+    with open(config["instance_restriction"]) as r_file:
+      for line in r_file.readlines():
+        [graph, k] = line.split(",")
+        instance_set.add((ntpath.basename(graph), int(k)))
+    result = [(graph, tag, k) for graph, tag, k in result if (ntpath.basename(graph), k) in instance_set]
+
+  return result
 
 def serial_partitioner_call(partitioner, instance, k, epsilon, seed, objective, timelimit):
   return (
@@ -179,17 +192,16 @@ try:
         header = partitioner_header(result_dir)
 
       partitioner_calls = []
-      for instance, tag in get_all_benchmark_instances(partitioner, config).items():
-        for k in config["k"]:
-          for threads in config["threads"]:
-            if is_serial_partitioner and threads > 1 and len(config["threads"]) > 1:
-              continue
-            call = partitioner_call(is_serial_partitioner, partitioner, instance, threads, k, epsilon, seed, objective, timelimit, config_file, algorithm_name, args, header, tag)
-            header = None
-            if write_partition_file:
-              call += " --partition_folder=" + os.path.abspath(result_dir)
-            call += " >> " + partitioner_dump(result_dir, instance, threads, k, seed)
-            partitioner_calls.append(call)
+      for instance, tag, k in get_all_benchmark_instances(partitioner, config):
+        for threads in config["threads"]:
+          if is_serial_partitioner and threads > 1 and len(config["threads"]) > 1:
+            continue
+          call = partitioner_call(is_serial_partitioner, partitioner, instance, threads, k, epsilon, seed, objective, timelimit, config_file, algorithm_name, args, header, tag)
+          header = None
+          if write_partition_file:
+            call += " --partition_folder=" + os.path.abspath(result_dir)
+          call += " >> " + partitioner_dump(result_dir, instance, threads, k, seed)
+          partitioner_calls.append(call)
 
       # Write partitioner calls to workload file
       with open(experiment_dir + "/" + algorithm_file + "_workload.txt", "a") as partitioner_workload_file:

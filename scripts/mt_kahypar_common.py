@@ -67,7 +67,7 @@ def run_mtkahypar(mt_kahypar, args, default_args, print_fail_msg=True, detect_in
          "--s-num-threads=" + str(args.threads),
          "--verbose=false",
          "--sp-process=true",
-         "--show-detailed-timing=true",
+         "--show-detailed-timings=true",
          *args_list]
   if args.partition_folder != "":
     cmd.extend(["--write-partition-file=true"])
@@ -130,7 +130,7 @@ def print_call(mt_kahypar, args, default_args, detect_instance_type=False):
          "--s-num-threads=" + str(args.threads),
          "--verbose=false",
          "--sp-process=true",
-         "--show-detailed-timing=true",
+         "--show-detailed-timings=true",
          *args_list]
   print(shlex.join(cmd))
   return None, None

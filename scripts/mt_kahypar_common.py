@@ -146,6 +146,14 @@ def set_result_vals(**kwargs):
   _result_initialized = True
 
 
+def str_to_bool(input: str) -> bool:
+  if input.lower() in ["f", "false", "n", "no", "0"]:
+    return False
+  if input.lower() in ["t", "true", "y", "yes", "1"]:
+    return True
+  raise ValueError(f"invalid input for bool: {input}")
+
+
 def parse(result_line, key, *, out=None, parser=float):
   assert _result_initialized, "set_result_vals must be called before parsing"
   assert parse != bool, "Parsing via bool does not work"

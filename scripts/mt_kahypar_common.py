@@ -65,7 +65,7 @@ def run_mtkahypar(mt_kahypar, args, default_args, print_fail_msg=True, detect_in
          "-o" + str(args.objective),
          "-mdirect",
          "--s-num-threads=" + str(args.threads),
-         "--verbose=false",
+         "--quiet",
          "--sp-process=true",
          "--show-detailed-timings=true",
          *args_list]
@@ -128,7 +128,7 @@ def print_call(mt_kahypar, args, default_args, detect_instance_type=False):
          "-o" + str(args.objective),
          "-mdirect",
          "--s-num-threads=" + str(args.threads),
-         "--verbose=false",
+         "--quiet",
          "--sp-process=true",
          "--show-detailed-timings=true",
          *args_list]
